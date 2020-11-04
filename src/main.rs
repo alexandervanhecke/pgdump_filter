@@ -8,11 +8,17 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[structopt(name = "pgdump_filter")]
 struct Options {
     /// Exclude the listed copy block(s)
-    #[structopt(short = "e", long = "excluded_copy_blocks")]
+    #[structopt(short = "e", long = "excluded_copy_blocks", conflicts_with="included_copy_blocks")]
     excluded_copy_blocks: Vec<String>,
+    /// Include the listed copy block(s)
+    #[structopt(short = "i", long = "included_copy_blocks")]
+    included_copy_blocks: Vec<String>,
     /// Flag to exclude large object operations (lo_read, lowrite, lo_open, ...)
     #[structopt(short = "l", long = "exclude_large_objects")]
     exclude_large_objects: bool,
+    /// Schema of the objects
+    #[structopt(default_value = "public", short = "s", long = "schema")]
+    schema: String,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -38,8 +44,12 @@ impl State {
             l if l.starts_with("--") => State::Comment,
             l if l.starts_with("COPY ") && l.ends_with("FROM stdin;") && opts.excluded_copy_blocks
                 .iter()
-                .find(|&excluded_block| l.to_lowercase().contains(&excluded_block.to_lowercase()))
+                .find(|&excluded_block| l.to_lowercase().contains(&format!("COPY {}.{} ", opts.schema, excluded_block).to_lowercase()))
                 .is_some() => State::ExcludedCopyBlock,
+            l if l.starts_with("COPY ") && l.ends_with("FROM stdin;") && !opts.included_copy_blocks.is_empty() && opts.included_copy_blocks
+                .iter()
+                .find(|&included_block| l.to_lowercase().contains(&format!("COPY {}.{} ", opts.schema, included_block).to_lowercase()))
+                .is_none() => State::ExcludedCopyBlock,
             l if l.starts_with("\\.") => match self {
                 State::ExcludedCopyBlock => State::EndOfExcludedCopyBlock,
                 state => state.clone()
