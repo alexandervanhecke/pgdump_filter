@@ -1,5 +1,6 @@
 use std::{io, io::prelude::*};
 use structopt::StructOpt;
+use std::io::{BufWriter, Write};
 
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Result<T> = std::result::Result<T, Error>;
@@ -81,18 +82,24 @@ pub fn main() -> Result<()> {
     let opts: Options = Options::from_args();
     let mut prev_included_state: State = State::Init;
     let mut state: State = State::Init;
+
+    let stdout = std::io::stdout();
+    let lock = stdout.lock();
+    let mut out = BufWriter::new(lock);
+
     for line in io::stdin().lock().lines() {
         match line {
             Ok(line) => {
                 state = state.next_state(&line, &opts);
                 if state.must_include(&opts, &prev_included_state) {
                     prev_included_state = state.clone();
-                    println!("{}", line);
+                    writeln!(out, "{}", line)?;
                 }
             }
             Err(e) => panic!("An IO error occurred {}", e)
         }
     }
+    out.flush()?;
     Ok(())
 }
 
