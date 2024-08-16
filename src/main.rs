@@ -13,9 +13,9 @@ pub type Result<T> = std::result::Result<T, Error>;
 struct Options {
     /// Exclude the listed copy block(s)
     #[structopt(
-    short = "e",
-    long = "excluded_copy_blocks",
-    conflicts_with = "included_copy_blocks"
+        short = "e",
+        long = "excluded_copy_blocks",
+        conflicts_with = "included_copy_blocks"
     )]
     excluded_copy_blocks: Vec<String>,
     /// Include the listed copy block(s)
@@ -28,10 +28,10 @@ struct Options {
     #[structopt(default_value = "public", short = "s", long = "schema")]
     schema: String,
     #[structopt(
-    default_value = "32",
-    short = "b",
-    long = "buffersize",
-    help = "size of buffer in MB.  make sure this is enough to hold the longest line in the file."
+        default_value = "32",
+        short = "b",
+        long = "buffersize",
+        help = "size of buffer in MB.  make sure this is enough to hold the longest line in the file."
     )]
     buffersize_in_mb: usize,
 }
@@ -81,18 +81,24 @@ impl State {
                         l.contains(
                             &format!("COPY {}.{} ", opts.schema, excluded_block).to_lowercase(),
                         )
-                    }) => Ok(State::ExcludedCopyBlock),
+                    }) =>
+                    {
+                        Ok(State::ExcludedCopyBlock)
+                    }
                     l if !opts.included_copy_blocks.is_empty()
                         && opts
-                        .included_copy_blocks
-                        .iter()
-                        .find(|&included_block| {
-                            l.to_ascii_lowercase().contains(
-                                &format!("COPY {}.{} ", opts.schema, included_block)
-                                    .to_lowercase(),
-                            )
-                        })
-                        .is_none() => Ok(State::ExcludedCopyBlock),
+                            .included_copy_blocks
+                            .iter()
+                            .find(|&included_block| {
+                                l.to_ascii_lowercase().contains(
+                                    &format!("COPY {}.{} ", opts.schema, included_block)
+                                        .to_lowercase(),
+                                )
+                            })
+                            .is_none() =>
+                    {
+                        Ok(State::ExcludedCopyBlock)
+                    }
                     _ => Ok(State::Statement),
                 }
             }
